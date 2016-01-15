@@ -300,7 +300,7 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
               var chartSeries = chart.get(s.id);
               if (chartSeries) {
                 if (!angular.equals(prevSeriesOptions[s.id], chartOptionsWithoutEasyOptions(s))) {
-                  chartSeries.update(angular.copy(s), false);
+                  chartSeries.update(s, false);
                 } else {
                   if (s.visible !== undefined && chartSeries.visible !== s.visible) {
                     chartSeries.setVisible(s.visible, false);
@@ -309,7 +309,7 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
                   // Make sure the current series index can be accessed in seriesOld
                   if (idx < seriesOld.length) {
                     var sOld = seriesOld[idx];
-                    var sCopy = angular.copy(sOld);
+                    var sCopy = sOld;
                     
                     // Get the latest data point from the new series
                     var ptNew = s.data[s.data.length - 1];
@@ -329,16 +329,16 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
                         chartSeries.addPoint(ptNew, false, true);
                       }
                       else {
-                        chartSeries.setData(angular.copy(s.data), false);
+                        chartSeries.setData(s.data, false);
                       }
                     }
                   }
                   else {
-                    chartSeries.setData(angular.copy(s.data), false);
+                    chartSeries.setData(s.data, false);
                   }
                 }
               } else {
-                chart.addSeries(angular.copy(s), false);
+                chart.addSeries(s, false);
               }
               prevSeriesOptions[s.id] = chartOptionsWithoutEasyOptions(s);
             });
@@ -463,7 +463,7 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
 
                 if (axisIndex < chart[axisName].length) {
                   chart[axisName][axisIndex].update(axis, false);
-                  updateZoom(chart[axisName][axisIndex], angular.copy(axis));
+                  updateZoom(chart[axisName][axisIndex], axis);
                 }
 
               }
@@ -471,7 +471,7 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
             } else {
               // update single axis
               chart[axisName][0].update(newAxes, false);
-              updateZoom(chart[axisName][0], angular.copy(newAxes));
+              updateZoom(chart[axisName][0], newAxes);
             }
 
             chart.redraw();
