@@ -217,6 +217,9 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
         }
       });
 
+      if(config.drilldown) {
+        mergedOptions.drilldown = config.drilldown;
+      }
       if(config.title) {
         mergedOptions.title = config.title;
       }
