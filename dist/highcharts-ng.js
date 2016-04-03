@@ -284,10 +284,13 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
 
         // prevSeriesOptions is maintained by processSeries
         var prevSeriesOptions = {};
+        // chart is maintained by initChart
+        var chart = false;
 
         var processSeries = function(series, seriesOld) {
           var i;
           var ids = [];
+          var doRedraw = false;
 
           if(series) {
             var setIds = ensureIds(series);
@@ -296,68 +299,88 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
               //In this scenario just return early and let the next cycle take care of changes
               return false;
             }
-
+            
+            // Build id to index map, in case series were interchanged in order
+            var sOldMap = {};
+            if(Array.isArray(seriesOld)) {
+		angular.forEach(seriesOld,function(sOld) {
+			if(sOld.id !== undefined && sOld.id !== null) {
+				sOldMap[seriesOld.id] = sOld;
+			}
+		});
+            }
+            
             //Find series to add or update
+            var chartContainsData = false;
             angular.forEach(series, function(s, idx) {
-              ids.push(s.id);
-              var chartSeries = chart.get(s.id);
-              if (chartSeries) {
-                if (!angular.equals(prevSeriesOptions[s.id], chartOptionsWithoutEasyOptions(s))) {
-                  chartSeries.update(s, false);
-                } else {
-                  if (s.visible !== undefined && chartSeries.visible !== s.visible) {
-                    chartSeries.setVisible(s.visible, false);
-                  }
-                  
-                  // Make sure the current series index can be accessed in seriesOld
-                  if (idx < seriesOld.length) {
-                    var sOld = seriesOld[idx];
-                    var sCopy = sOld;
-                    
-                    // Get the latest data point from the new series
-                    var ptNew = s.data[s.data.length - 1];
-                    
-                    // Check if the new and old series are identical with the latest data point added
-                    // If so, call addPoint without shifting
-                    sCopy.data.push(ptNew);
-                    if (angular.equals(sCopy, s)) {
-                      chartSeries.addPoint(ptNew, false);
-                    }
-                    
-                    // Check if the data change was a push and shift operation
-                    // If so, call addPoint WITH shifting
-                    else {
-                      sCopy.data.shift();
-                      if (angular.equals(sCopy, s)) {
-                        chartSeries.addPoint(ptNew, false, true);
-                      }
-                      else {
-                        chartSeries.setData(s.data, false);
-                      }
-                    }
-                  }
-                  else {
-                    chartSeries.setData(s.data, false);
-                  }
-                }
-              } else {
-                chart.addSeries(s, false);
-              }
-              prevSeriesOptions[s.id] = chartOptionsWithoutEasyOptions(s);
+		ids.push(s.id);
+		var chartSeries = chart.get(s.id);
+		if (chartSeries) {
+			// Make sure the current series id can be accessed in seriesOld
+			if(!angular.equals(prevSeriesOptions[s.id], chartOptionsWithoutEasyOptions(s)) || !(s.id in sOldMap)) {
+				chartSeries.update(s, false);
+				if(s.data.length > 0) {
+					chartContainsData = true;
+				}
+			} else {
+				if (s.visible !== undefined && chartSeries.visible !== s.visible) {
+					chartSeries.setVisible(s.visible, false);
+				}
+				
+				var sOld = sOldMap[s.id];
+				if(s.data.length >= sOld.data.length) {
+					// Check whether the first points are equal
+					for(var iPoint=0,maxPoint=sOld.data.length;iPoint < maxPoint && angular.equals(s.data[iPoint],sOld.data[iPoint]) ; iPoint++) {
+					}
+					
+					if(iPoint<maxPoint) {
+						// Replacements in the middle
+						chartSeries.setData(s.data,false);
+						doRedraw = true;
+						chartContainsData = true;
+					} else if(s.data.length > sOld.data.length) {
+						// Add from the end
+						for(iPoint=sOld.data.length,maxPoint=s.data.length; iPoint < maxPoint; iPoint++) {
+							chartSeries.addPoint(s.data[iPoint],false);
+						}
+						chartContainsData = true;
+						doRedraw = true;
+					} else if(s.data.length > 0) {
+						chartContainsData = true;
+					}
+				} else {
+					// Check whether the remaining points are still equal
+					for(var iDPoint=0,maxDPoint=s.data.length;iDPoint < maxDPoint && angular.equals(s.data[iDPoint],sOld.data[iDPoint]) ; iDPoint++) {
+					}
+					
+					if(iDPoint<maxDPoint) {
+						// Replacements in the middle
+						chartSeries.setData(s.data,false);
+						chartContainsData = true;
+					} else {
+						// Remove from the end, in reverse order
+						for(iDPoint=sOld.data.length-1,maxDPoint=s.data.length;iDPoint >= maxDPoint;iDPoint--) {
+							chartSeries.removePoint(iDPoint, false);
+						}
+						if(iDPoint >=0) {
+							chartContainsData = true;
+						}
+					}
+					doRedraw = true;
+				}
+			}
+		} else {
+			chart.addSeries(s, false);
+			doRedraw = true;
+			if(s.data.length > 0) {
+				chartContainsData = true;
+			}			
+		}
+		prevSeriesOptions[s.id] = chartOptionsWithoutEasyOptions(s);
             });
-
+            
             //  Shows no data text if all series are empty
             if(scope.config.noData) {
-              var chartContainsData = false;
-
-              for(i = 0; i < series.length; i++) {
-                if (series[i].data && series[i].data.length > 0) {
-                  chartContainsData = true;
-
-                  break;
-                }
-              }
-
               if (!chartContainsData) {
                 chart.showLoading(scope.config.noData);
               } else {
@@ -371,14 +394,13 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
             var s = chart.series[i];
             if (s.options.id !== 'highcharts-navigator-series' && highchartsNGUtils.indexOf(ids, s.options.id) < 0) {
               s.remove(false);
+              doRedraw = true;
             }
           }
 
-          return true;
+          return doRedraw;
         };
 
-        // chart is maintained by initChart
-        var chart = false;
         var initChart = function() {
           if (chart) chart.destroy();
           prevSeriesOptions = {};
@@ -404,18 +426,31 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
         };
         initChart();
 
-
+	scope.$watchGroup([function() { return element[0].offsetWidth;},function() { return element[0].offsetHeight;}],function(newValues) {
+		chart.reflow();
+	});
+	
+	// Allowing a single redraw on each digest cycle
+	var canRedrawOne = true;
+	var doAsyncRedraw = function(needsRedraw) {
+		if(canRedrawOne && needsRedraw) {
+			canRedrawOne = false;
+			scope.$evalAsync(function() {
+				chart.redraw();
+				canRedrawOne = true;
+			});
+		}
+	};
+	
         if(scope.disableDataWatch){
           scope.$watchCollection('config.series', function (newSeries, oldSeries) {
-            processSeries(newSeries);
-            chart.redraw();
+            var needsRedraw = processSeries(newSeries);
+            doAsyncRedraw(needsRedraw);
           });
         } else {
           scope.$watch('config.series', function (newSeries, oldSeries) {
             var needsRedraw = processSeries(newSeries, oldSeries);
-            if(needsRedraw) {
-              chart.redraw();
-            }
+            doAsyncRedraw(needsRedraw);
           }, true);
         }
 
@@ -455,7 +490,7 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
 
         angular.forEach(axisNames, function(axisName) {
           scope.$watch('config.' + axisName, function(newAxes, oldAxes) {
-            if (newAxes === oldAxes || !newAxes) {
+            if (angular.equals(newAxes,oldAxes)) {
               return;
             }
 
@@ -477,15 +512,15 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
               updateZoom(chart[axisName][0], newAxes);
             }
 
-            chart.redraw();
+            doAsyncRedraw(true);
           }, true);
         });
         scope.$watch('config.options', function (newOptions, oldOptions, scope) {
           //do nothing when called on registration
           if (newOptions === oldOptions) return;
           initChart();
-          processSeries(scope.config.series);
-          chart.redraw();
+          var doRedraw = processSeries(scope.config.series);
+          doAsyncRedraw(doRedraw);
         }, true);
 
         scope.$watch('config.size', function (newSize, oldSize) {
