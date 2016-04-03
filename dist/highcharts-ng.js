@@ -426,21 +426,40 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
         };
         initChart();
 
-	scope.$watchGroup([function() { return element[0].offsetWidth;},function() { return element[0].offsetHeight;}],function(newValues) {
-		chart.reflow();
-	});
-	
 	// Allowing a single redraw on each digest cycle
 	var canRedrawOne = true;
-	var doAsyncRedraw = function(needsRedraw) {
-		if(canRedrawOne && needsRedraw) {
-			canRedrawOne = false;
-			scope.$evalAsync(function() {
-				chart.redraw();
-				canRedrawOne = true;
-			});
+	var canReflowOne = true;
+	var redrawQueued = false;
+	var doAsyncRedraw = function(needsRedraw,needsReflow) {
+		if((canRedrawOne && needsRedraw) || (canReflowOne && needsReflow)) {
+			if(canRedrawOne && needsRedraw) {
+				canRedrawOne = false;
+			}
+			if(canReflowOne && needsReflow) {
+				canReflowOne = false;
+			}
+			if(!redrawQueued) {
+				redrawQueued = true;
+				scope.$evalAsync(function() {
+					// Redraw and reflow can interfere, so we control both here
+					if(canRedrawOne) {
+						chart.redraw();
+					} else {
+						chart.reflow();
+					}
+					canReflowOne = true;
+					canRedrawOne = true;
+					redrawQueued = false;
+				});
+			}
 		}
 	};
+	
+	scope.$watchGroup([function() { return element[0].offsetWidth;},function() { return element[0].offsetHeight;}],function(newValues,oldValues) {
+		if(!angular.equals(newValues,oldValues)) {
+			doAsyncRedraw(false,true);
+		}
+	});
 	
         if(scope.disableDataWatch){
           scope.$watchCollection('config.series', function (newSeries, oldSeries) {
@@ -531,7 +550,7 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
         }, true);
 
         scope.$on('highchartsng.reflow', function () {
-          chart.reflow();
+          doAsyncRedraw(false,true);
         });
 
         scope.$on('$destroy', function() {
