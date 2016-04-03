@@ -438,7 +438,8 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
 			}
 			if(!redrawQueued) {
 				redrawQueued = true;
-				scope.$evalAsync(function() {
+				// scope.$applyAsync(function() {
+				setTimeout(function() {
 					// Redraw and reflow can interfere, so we control both here
 					if(!canRedrawOne) {
 						chart.redraw();
@@ -449,7 +450,7 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
 					canReflowOne = true;
 					canRedrawOne = true;
 					redrawQueued = false;
-				});
+				},10);
 			}
 		}
 	};
