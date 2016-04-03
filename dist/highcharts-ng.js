@@ -290,7 +290,6 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
         var processSeries = function(series, seriesOld) {
           var i;
           var ids = [];
-          var doRedraw = false;
 
           if(series) {
             var setIds = ensureIds(series);
@@ -328,7 +327,11 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
 				}
 				
 				var sOld = sOldMap[s.id];
-				if(s.data.length >= sOld.data.length) {
+				if(s.data.length === sOld.data.length) {
+					if(!angular.equals(s.data,sOld.data)) {
+						chartSeries.setData(s.data,false);
+					}
+				} else if(s.data.length > sOld.data.length) {
 					// Check whether the first points are equal
 					for(var iPoint=0,maxPoint=sOld.data.length;iPoint < maxPoint && angular.equals(s.data[iPoint],sOld.data[iPoint]) ; iPoint++) {
 					}
@@ -336,7 +339,6 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
 					if(iPoint<maxPoint) {
 						// Replacements in the middle
 						chartSeries.setData(s.data,false);
-						doRedraw = true;
 						chartContainsData = true;
 					} else if(s.data.length > sOld.data.length) {
 						// Add from the end
@@ -344,7 +346,6 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
 							chartSeries.addPoint(s.data[iPoint],false);
 						}
 						chartContainsData = true;
-						doRedraw = true;
 					} else if(s.data.length > 0) {
 						chartContainsData = true;
 					}
@@ -366,12 +367,10 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
 							chartContainsData = true;
 						}
 					}
-					doRedraw = true;
 				}
 			}
 		} else {
 			chart.addSeries(s, false);
-			doRedraw = true;
 			if(s.data.length > 0) {
 				chartContainsData = true;
 			}			
@@ -394,11 +393,10 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
             var s = chart.series[i];
             if (s.options.id !== 'highcharts-navigator-series' && highchartsNGUtils.indexOf(ids, s.options.id) < 0) {
               s.remove(false);
-              doRedraw = true;
             }
           }
 
-          return doRedraw;
+          return true;
         };
 
         var initChart = function() {
@@ -442,7 +440,7 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
 				redrawQueued = true;
 				scope.$evalAsync(function() {
 					// Redraw and reflow can interfere, so we control both here
-					if(canRedrawOne) {
+					if(!canRedrawOne) {
 						chart.redraw();
 					} else {
 						chart.reflow();
