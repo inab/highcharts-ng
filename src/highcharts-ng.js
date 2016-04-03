@@ -404,6 +404,9 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
         };
         initChart();
 
+	scope.$watchGroup([function() { return element[0].offsetWidth;},function() { return element[0].offsetHeight;}],function(newValues) {
+		chart.reflow();
+	});
 
         if(scope.disableDataWatch){
           scope.$watchCollection('config.series', function (newSeries, oldSeries) {
