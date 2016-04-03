@@ -442,9 +442,10 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
 					// Redraw and reflow can interfere, so we control both here
 					if(!canRedrawOne) {
 						chart.redraw();
-					} else {
-						chart.reflow();
 					}
+					// One does not imply the another
+					chart.reflow();
+					
 					canReflowOne = true;
 					canRedrawOne = true;
 					redrawQueued = false;
