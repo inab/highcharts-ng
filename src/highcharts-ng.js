@@ -408,11 +408,15 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
 		chart.reflow();
 	});
 	
+	// Allowing a single redraw on each digest cycle
+	var canRedrawOne = true;
 	var doAsyncRedraw = function(needsRedraw) {
-		if(needsRedraw) {
-			setTimeout(function() {
+		if(canRedrawOne && needsRedraw) {
+			canRedrawOne = false;
+			scope.$evalAsync(function() {
 				chart.redraw();
-			},10);
+				canRedrawOne = true;
+			});
 		}
 	};
 	
@@ -464,7 +468,7 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
 
         angular.forEach(axisNames, function(axisName) {
           scope.$watch('config.' + axisName, function(newAxes, oldAxes) {
-            if (newAxes === oldAxes || !newAxes) {
+            if (angular.equals(newAxes,oldAxes)) {
               return;
             }
 
@@ -486,7 +490,7 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
               updateZoom(chart[axisName][0], newAxes);
             }
 
-            chart.redraw();
+            doAsyncRedraw(true);
           }, true);
         });
         scope.$watch('config.options', function (newOptions, oldOptions, scope) {
@@ -494,7 +498,7 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
           if (newOptions === oldOptions) return;
           initChart();
           processSeries(scope.config.series);
-          chart.redraw();
+          doAsyncRedraw(true);
         }, true);
 
         scope.$watch('config.size', function (newSize, oldSize) {
