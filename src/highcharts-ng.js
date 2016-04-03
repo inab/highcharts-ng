@@ -407,18 +407,24 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
 	scope.$watchGroup([function() { return element[0].offsetWidth;},function() { return element[0].offsetHeight;}],function(newValues) {
 		chart.reflow();
 	});
-
+	
+	var doAsyncRedraw = function(needsRedraw) {
+		if(needsRedraw) {
+			setTimeout(function() {
+				chart.redraw();
+			},10);
+		}
+	};
+	
         if(scope.disableDataWatch){
           scope.$watchCollection('config.series', function (newSeries, oldSeries) {
-            processSeries(newSeries);
-            chart.redraw();
+            var needsRedraw = processSeries(newSeries);
+            doAsyncRedraw(needsRedraw);
           });
         } else {
           scope.$watch('config.series', function (newSeries, oldSeries) {
             var needsRedraw = processSeries(newSeries, oldSeries);
-            if(needsRedraw) {
-              chart.redraw();
-            }
+            doAsyncRedraw(needsRedraw);
           }, true);
         }
 
