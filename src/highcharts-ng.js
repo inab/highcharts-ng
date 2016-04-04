@@ -470,7 +470,7 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
           });
 		scope.$on('highchartsng.processSeries', function (event,config) {
 			if(config!==undefined && scope.config!==undefined && config.series===scope.config.series) {
-				var needsRedraw = processSeries(newSeries);
+				var needsRedraw = processSeries(scope.config.series);
 				doAsyncRedraw(needsRedraw);
 			}
 		});
