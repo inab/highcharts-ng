@@ -438,8 +438,10 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
 			}
 			if(!redrawQueued) {
 				redrawQueued = true;
-				// scope.$applyAsync(function() {
-				setTimeout(function() {
+				// This is needed so the task is outside current
+				// digestion cycle (hopefully)
+				scope.$evalAsync(function() {
+				// setTimeout(function() {
 					// Redraw and reflow can interfere, so we control both here
 					if(!canRedrawOne) {
 						chart.redraw();
@@ -450,7 +452,7 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
 					canReflowOne = true;
 					canRedrawOne = true;
 					redrawQueued = false;
-				},10);
+				});
 			}
 		}
 	};
@@ -466,6 +468,12 @@ if (typeof module !== 'undefined' && typeof exports !== 'undefined' && module.ex
             var needsRedraw = processSeries(newSeries);
             doAsyncRedraw(needsRedraw);
           });
+		scope.$on('highchartsng.processSeries', function (event,config) {
+			if(config!==undefined && scope.config!==undefined && config.series===scope.config.series) {
+				var needsRedraw = processSeries(newSeries);
+				doAsyncRedraw(needsRedraw);
+			}
+		});
         } else {
           scope.$watch('config.series', function (newSeries, oldSeries) {
             var needsRedraw = processSeries(newSeries, oldSeries);
